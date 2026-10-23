@@ -4,7 +4,7 @@ Control OpenCode sessions from Claude Code. The plugin provides MCP tools and se
 Sessions remain external workers. The plugin does not register native Claude subagents or modify Claude mailbox files.
 
 OpenCode **v2 is the minimum version**. The bridge targets v2 and later versions that retain the required API schemas.
-Live checks used **OpenCode 2.0.32**, **Claude Code 2.1.309**, and **Bun 1.4.4** on macOS ARM64.
+Tested with **OpenCode 2.0.32**, **Claude Code 2.1.309**, and **Bun 1.4.4** on macOS ARM64.
 Future OpenCode releases are not verified. Each response passes a schema check, with an actionable error for incompatible responses.
 The v1 `prompt_async` API is not supported.
 
@@ -76,8 +76,7 @@ Ask Claude:
 | `opencode_ack`     | Acknowledge a notification after Claude processes it.                         |
 
 A model selection uses `{ "providerID": "opencode", "id": "deepseek-v4.1-flash-free" }`.
-That model completed the live checks. Model availability can change.
-The installed default model returned a deprecation error during the first check. No global model configuration changed.
+Model availability can change. Select a model available through your OpenCode provider.
 
 Only one task can be outstanding per session. Different sessions can run concurrently in OpenCode.
 A completed task permits a follow-up with the same session ID.
@@ -91,7 +90,7 @@ The bridge has no permission-approval tool and never changes permission rules.
 | `OPENCODE_URL`             | `http://127.0.0.1:4096`. Only loopback HTTP origins are accepted.                                                       |
 | `OPENCODE_SERVER_PASSWORD` | Password for the selected server. No password is stored in SQLite.                                                      |
 | `OPENCODE_SERVER_USERNAME` | `opencode`.                                                                                                             |
-| `BRIDGE_OWNER`             | Required. The launcher generates it. Use 8–128 letters, digits, underscores, or hyphens.                                |
+| `BRIDGE_OWNER`             | Required. Generate it before launch. Use 8–128 letters, digits, underscores, or hyphens.                                |
 | `BRIDGE_DB`                | `~/.local/state/claude-opencode-bridge/bridge.sqlite`. Use the same database across conversations for ownership checks. |
 
 The database contains task IDs, session ownership, and notification bodies. It uses mode 0600 and a private parent directory.
@@ -163,7 +162,9 @@ Run `bun run benchmark` for a local benchmark without model calls.
 ## Distribution
 
 The public [GitHub marketplace](https://github.com/adamazad/claude-opencode-bridge) is the installation catalog.
-[Versioned releases](https://github.com/adamazad/claude-opencode-bridge/releases) also provide a plugin ZIP for local loading.
+[Versioned releases](https://github.com/adamazad/claude-opencode-bridge/releases) also provide a source plugin ZIP.
+For ZIP installation, extract it, run `bun install --frozen-lockfile` in the extracted directory, and use `scripts/claude.sh`.
+Marketplace installation handles dependencies automatically and is the recommended method.
 The repository is not published to npm. No license has been selected.
 
 This marketplace is independently hosted. It is not an accepted listing in Anthropic's official directory or a channel allowlist approval.
