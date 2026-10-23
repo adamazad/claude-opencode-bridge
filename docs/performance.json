@@ -1,0 +1,179 @@
+{
+  "measured_at": "2026-10-23T10:53:18.832Z",
+  "environment": {
+    "bun": "1.4.4",
+    "platform": "darwin",
+    "arch": "arm64",
+    "cpu": "Apple M1 Pro"
+  },
+  "mode": "mock OpenCode; real subprocess, stdio MCP, SQLite and HTTP/SSE; no model or Claude inference",
+  "startup_single_sample_ms": 148.45,
+  "control": {
+    "n": 28,
+    "median_ms": 1.61,
+    "p95_ms": 4.37,
+    "max_ms": 19.88
+  },
+  "delivery": {
+    "sse_paced": {
+      "n": 12,
+      "median_ms": 1.42,
+      "p95_ms": 1938.03,
+      "max_ms": 1938.03
+    },
+    "sse_burst": {
+      "n": 8,
+      "median_ms": 1999.33,
+      "p95_ms": 2002.78,
+      "max_ms": 2002.78
+    },
+    "poll_only": {
+      "n": 8,
+      "median_ms": 1998.27,
+      "p95_ms": 2000.41,
+      "max_ms": 2000.41
+    }
+  },
+  "samples": [
+    {
+      "profile": "sse_paced",
+      "control_ms": 3.0970420000001013,
+      "delivery_ms": 4.861374999999953
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.8144170000000486,
+      "delivery_ms": 1.591207999999824
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.7785829999997986,
+      "delivery_ms": 1.1007909999998446
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.6329169999999067,
+      "delivery_ms": 1.486207999999806
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 2.9160830000000715,
+      "delivery_ms": 1.1961249999999382
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.9941249999997126,
+      "delivery_ms": 1.5552910000001248
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.6114589999997406,
+      "delivery_ms": 0.9928749999999127
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 4.374792000000525,
+      "delivery_ms": 1.1144589999994423
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.861417000000074,
+      "delivery_ms": 1.4269169999997757
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.7128750000001673,
+      "delivery_ms": 1938.0303750000003
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.3433340000010503,
+      "delivery_ms": 1.0344160000004194
+    },
+    {
+      "profile": "sse_paced",
+      "control_ms": 1.7277500000000146,
+      "delivery_ms": 1.424124999999549
+    },
+    {
+      "profile": "sse_burst",
+      "control_ms": 1.9110840000012104,
+      "delivery_ms": 818.7260839999999
+    },
+    {
+      "profile": "sse_burst",
+      "control_ms": 19.876917000001413,
+      "delivery_ms": 1926.0263329999998
+    },
+    {
+      "profile": "sse_burst",
+      "control_ms": 1.2347919999992882,
+      "delivery_ms": 1999.5739580000009
+    },
+    {
+      "profile": "sse_burst",
+      "control_ms": 1.3314170000012382,
+      "delivery_ms": 1999.3344159999997
+    },
+    {
+      "profile": "sse_burst",
+      "control_ms": 1.192666000000827,
+      "delivery_ms": 2002.7779170000013
+    },
+    {
+      "profile": "sse_burst",
+      "control_ms": 1.0564159999994445,
+      "delivery_ms": 1999.682584000002
+    },
+    {
+      "profile": "sse_burst",
+      "control_ms": 0.975125000000844,
+      "delivery_ms": 1999.6830840000002
+    },
+    {
+      "profile": "sse_burst",
+      "control_ms": 1.5255839999990712,
+      "delivery_ms": 1998.6695
+    },
+    {
+      "profile": "poll_only",
+      "control_ms": 1.674208999997063,
+      "delivery_ms": 1998.274125
+    },
+    {
+      "profile": "poll_only",
+      "control_ms": 1.3041249999987485,
+      "delivery_ms": 1999.7699169999978
+    },
+    {
+      "profile": "poll_only",
+      "control_ms": 0.906542000000627,
+      "delivery_ms": 2000.1663750000007
+    },
+    {
+      "profile": "poll_only",
+      "control_ms": 0.7702080000017304,
+      "delivery_ms": 2000.0207090000004
+    },
+    {
+      "profile": "poll_only",
+      "control_ms": 1.0009999999965657,
+      "delivery_ms": 2000.4087919999984
+    },
+    {
+      "profile": "poll_only",
+      "control_ms": 1.019165999998222,
+      "delivery_ms": 1998.1942080000008
+    },
+    {
+      "profile": "poll_only",
+      "control_ms": 2.424749999998312,
+      "delivery_ms": 1997.7053339999984
+    },
+    {
+      "profile": "poll_only",
+      "control_ms": 1.5222080000021379,
+      "delivery_ms": 1998.2377500000002
+    }
+  ]
+}

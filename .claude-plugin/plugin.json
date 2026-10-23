@@ -1,0 +1,12 @@
+{
+  "name": "opencode-bridge",
+  "version": "0.1.0",
+  "description": "Control OpenCode sessions as external workers and receive durable channel notifications.",
+  "mcpServers": {
+    "opencode": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/scripts/run.sh",
+      "args": []
+    }
+  },
+  "channels": [{ "server": "opencode", "displayName": "OpenCode workers" }]
+}

@@ -1,0 +1,32 @@
+# Installed dependencies and generated outputs
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Local experiments, downloaded runtimes, and caches
+work/
+.runtime/
+tmp/
+temp/
+.cache/
+
+# Credentials and machine-local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.claude/settings.local.json
+
+# Runtime state and logs
+*.sqlite*
+*.db
+*.db-shm
+*.db-wal
+*.log
+logs/
+.DS_Store
