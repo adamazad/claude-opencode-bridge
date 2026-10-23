@@ -89,6 +89,10 @@ export class API {
       method,
       body: body === undefined ? undefined : JSON.stringify(body),
     });
+    if (r.status === 401 || r.status === 403)
+      throw new Error(
+        `OpenCode ${method} ${path}: HTTP ${r.status}. Check local service authentication or explicit credentials.`,
+      );
     if (!r.ok)
       throw new Error(
         `OpenCode ${method} ${path}: HTTP ${r.status} ${(await r.text()).slice(0, 1000)}`,

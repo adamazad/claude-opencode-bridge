@@ -253,10 +253,15 @@ test("background dispatch and inspect return before slow worker completion", asy
 
 test("normal launch connects without an owner and binds explicitly without changing ownership", async () => {
   const dir = mkdtempSync(join(tmpdir(), "bridge-setup-"));
+  const health = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: () => Response.json({ version: "2.0.32" }),
+  });
   const env = {
     BRIDGE_OWNER: "",
     BRIDGE_DB: join(dir, "bridge.sqlite"),
-    OPENCODE_URL: "http://127.0.0.1:1",
+    OPENCODE_URL: health.url.origin,
   };
   let client = await openBridgeClient(env, () => {});
   let second: Awaited<ReturnType<typeof openBridgeClient>> | undefined;
@@ -317,6 +322,7 @@ test("normal launch connects without an owner and binds explicitly without chang
   } finally {
     await second?.close();
     await client.close();
+    health.stop(true);
     rmSync(dir, { recursive: true, force: true });
   }
 }, 15000);

@@ -22,13 +22,14 @@ Claude Code installs the pinned Bun dependencies into its plugin cache automatic
 No source checkout or npm package installation is needed.
 See [Claude's dependency installation rules](https://code.claude.com/docs/en/plugins/loading#nodejs-package-dependencies).
 
-Start OpenCode in a separate terminal:
+If OpenCode v2 is already running, the bridge reuses its registered local service and authentication automatically.
+No port or password needs to be copied. If no service is running, start it once:
 
 ```sh
-opencode serve --hostname 127.0.0.1 --port 4096
+opencode service start
 ```
 
-Set `OPENCODE_SERVER_PASSWORD` to the password shown by OpenCode, then launch Claude from your project directory:
+Launch Claude from your project directory:
 
 ```sh
 claude --dangerously-load-development-channels plugin:opencode-bridge@claude-opencode-bridge
@@ -102,13 +103,20 @@ The bridge has no permission-approval tool and never changes permission rules.
 
 ## Configuration
 
-| Environment variable       | Default / purpose                                                                                                       |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `OPENCODE_URL`             | `http://127.0.0.1:4096`. Only loopback HTTP origins are accepted.                                                       |
-| `OPENCODE_SERVER_PASSWORD` | Password for the selected server. No password is stored in SQLite.                                                      |
-| `OPENCODE_SERVER_USERNAME` | `opencode`.                                                                                                             |
-| `BRIDGE_OWNER`             | Optional saved owner override. Otherwise the delegation command binds to the current Claude session ID.                 |
-| `BRIDGE_DB`                | `~/.local/state/claude-opencode-bridge/bridge.sqlite`. Use the same database across conversations for ownership checks. |
+| Environment variable       | Default / purpose                                                                                                           |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `OPENCODE_URL`             | Optional explicit endpoint. Otherwise discover the registered v2 service. Only loopback HTTP origins are accepted.          |
+| `OPENCODE_SERVER_PASSWORD` | Optional credential override. Otherwise use the discovered service credential. Explicit URLs require their own credentials. |
+| `OPENCODE_SERVER_USERNAME` | `opencode`.                                                                                                                 |
+| `BRIDGE_OWNER`             | Optional saved owner override. Otherwise the delegation command binds to the current Claude session ID.                     |
+| `BRIDGE_DB`                | `~/.local/state/claude-opencode-bridge/bridge.sqlite`. Use the same database across conversations for ownership checks.     |
+
+Automatic connection uses OpenCode's local `service.json` registration under `${XDG_STATE_HOME:-~/.local/state}/opencode/`, the same source used by its [official service client](https://opencode.ai/v2/docs/build/client#local-background-service).
+The bridge validates the loopback destination before sending credentials, then verifies the service PID and version against `/api/info`.
+It never starts, replaces, or stops a server automatically. Credentials are not returned in tool results or saved in the bridge database.
+An explicit `OPENCODE_URL` bypasses discovery and never inherits credentials from a different service.
+If setup fails, check `opencode service status` and clear stale environment overrides, then retry the delegation command.
+After a service restart that changes its port, reconnect the plugin. Previously claimed sessions stay scoped to their original endpoint; ownership is never silently transferred.
 
 The database contains task IDs, session ownership, and notification bodies. It uses mode 0600 and a private parent directory.
 Ownership is scoped to the server origin and session ID. Separate databases cannot enforce ownership against each other.

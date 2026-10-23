@@ -6,19 +6,15 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { API } from "./api";
+import { connectAPI } from "./connection";
 import { Store } from "./store";
 import { Bridge } from "./bridge";
 import { createTools } from "./tools";
 if (!Bun.semver.satisfies(Bun.version, ">=1.4.4"))
   throw new Error("Bun 1.4.4 or later is required. Update Bun on PATH.");
-const api = new API(
-  process.env.OPENCODE_URL ?? "http://127.0.0.1:4096",
-  process.env.OPENCODE_SERVER_PASSWORD,
-  process.env.OPENCODE_SERVER_USERNAME,
-);
 let bridge: Bridge | undefined;
-function configure(owner?: string) {
+let configuring = false;
+async function configure(owner?: string) {
   if (bridge) {
     if (owner && owner !== bridge.store.owner)
       throw new Error(
@@ -26,6 +22,7 @@ function configure(owner?: string) {
       );
     return { configured: true, owner: bridge.store.owner };
   }
+  owner ??= process.env.BRIDGE_OWNER || undefined;
   if (!owner)
     return {
       setup_required: true,
@@ -36,27 +33,37 @@ function configure(owner?: string) {
     throw new Error(
       "Invalid BRIDGE_OWNER: use 8–128 letters, digits, underscores or hyphens.",
     );
-  const store = new Store(
-    process.env.BRIDGE_DB ??
-      join(
-        homedir(),
-        ".local",
-        "state",
-        "claude-opencode-bridge",
-        "bridge.sqlite",
-      ),
-    owner,
-    api.url,
-  );
+  if (configuring)
+    throw new Error(
+      "Bridge setup is already in progress; retry after it completes.",
+    );
+  configuring = true;
   try {
-    store.lock();
-  } catch (error) {
-    store.db.close();
-    throw error;
+    const api = await connectAPI();
+    const store = new Store(
+      process.env.BRIDGE_DB ??
+        join(
+          homedir(),
+          ".local",
+          "state",
+          "claude-opencode-bridge",
+          "bridge.sqlite",
+        ),
+      owner,
+      api.url,
+    );
+    try {
+      store.lock();
+    } catch (error) {
+      store.db.close();
+      throw error;
+    }
+    bridge = new Bridge(api, store);
+    startMonitoring();
+    return { configured: true, owner };
+  } finally {
+    configuring = false;
   }
-  bridge = new Bridge(api, store);
-  startMonitoring();
-  return { configured: true, owner };
 }
 const tools = new Map(
   Object.entries(
@@ -70,7 +77,7 @@ const tools = new Map(
   ),
 );
 const mcp = new Server(
-  { name: "opencode-bridge", version: "0.1.2" },
+  { name: "opencode-bridge", version: "0.1.3" },
   {
     capabilities: { tools: {}, experimental: { "claude/channel": {} } },
     instructions:
@@ -89,6 +96,12 @@ mcp.setRequestHandler(CallToolRequestSchema, async (req) => {
     try {
       const tool = tools.get(req.params.name);
       if (!tool) throw new Error("Unknown tool");
+      if (
+        !bridge &&
+        req.params.name !== "opencode_configure" &&
+        process.env.BRIDGE_OWNER
+      )
+        await configure();
       const result = await tool.invoke(req.params.arguments ?? {});
       return { content: [{ type: "text", text: JSON.stringify(result) }] };
     } catch (error) {
@@ -155,7 +168,7 @@ async function watch() {
   let delay = 500;
   while (!controller.signal.aborted) {
     try {
-      for await (const _ of api.events(controller.signal)) {
+      for await (const _ of bridge!.api.events(controller.signal)) {
         delay = 500;
         tick();
       }
@@ -188,5 +201,14 @@ const exit = () => process.exit(0);
 process.once("SIGINT", exit);
 process.once("SIGTERM", exit);
 mcp.onclose = exit;
-if (process.env.BRIDGE_OWNER) configure(process.env.BRIDGE_OWNER);
+
+if (process.env.BRIDGE_OWNER) {
+  try {
+    await configure();
+  } catch {
+    console.error(
+      "OpenCode setup unavailable. Call opencode_configure to diagnose and retry; no server was changed.",
+    );
+  }
+}
 await mcp.connect(new StdioServerTransport());
