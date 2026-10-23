@@ -8,37 +8,56 @@ Live checks used **OpenCode 2.0.32**, **Claude Code 2.1.309**, and **Bun 1.4.4**
 Future OpenCode releases are not verified. Each response passes a schema check, with an actionable error for incompatible responses.
 The v1 `prompt_async` API is not supported.
 
-## Setup
+## Install from the public marketplace
 
-1. Install Bun 1.4.4 or later from [Bun](https://bun.sh/docs/installation).
-2. Run `bun install --frozen-lockfile` in this directory.
-3. Start a local OpenCode server: `opencode serve --hostname 127.0.0.1 --port 4096`.
-4. In another terminal, export `OPENCODE_SERVER_PASSWORD` with the password shown by that server.
-5. Run `/absolute/path/to/claude-opencode-bridge/scripts/claude.sh` from your working directory.
-6. Accept the local development channel dialog in Claude Code.
-
-The launcher uses `bun` from PATH. Bun 1.4.4 or later is required.
-Dependencies and the lockfile belong to this directory.
-The plugin uses your existing OpenCode provider configuration. It does not start or stop the OpenCode server.
-
-The launcher loads the local plugin through `--plugin-dir` and enables `plugin:opencode-bridge@inline` as a development channel.
-It prints a unique `BRIDGE_OWNER` for the conversation. Save that value with the Claude conversation ID.
-
-To resume the same conversation, set its saved owner before launch:
+Requires Claude Code 2.1.309 or later, Bun 1.4.4 or later on PATH, and OpenCode v2.
+Supported launch environment: macOS or Linux with a POSIX shell.
 
 ```sh
-BRIDGE_OWNER=your-saved-owner /absolute/path/to/claude-opencode-bridge/scripts/claude.sh --resume YOUR_CLAUDE_SESSION_ID
+claude plugin marketplace add adamazad/claude-opencode-bridge
+claude plugin install opencode-bridge@claude-opencode-bridge
 ```
 
-Use a new owner for every new Claude conversation. Do not reuse an owner across different conversations.
-The bridge cannot independently prove that a resumed Claude conversation matches an owner supplied through the environment.
+Claude Code installs the pinned Bun dependencies into its plugin cache automatically.
+No source checkout or npm package installation is needed.
+See [Claude's dependency installation rules](https://code.claude.com/docs/en/plugins/loading#nodejs-package-dependencies).
+
+Start OpenCode in a separate terminal:
+
+```sh
+opencode serve --hostname 127.0.0.1 --port 4096
+```
+
+Set `OPENCODE_SERVER_PASSWORD` to the password shown by OpenCode, then launch Claude from your project directory:
+
+```sh
+export BRIDGE_OWNER="$(bun -e 'console.log(crypto.randomUUID())')"
+printf 'Save this owner to resume: %s\n' "$BRIDGE_OWNER"
+claude --dangerously-load-development-channels plugin:opencode-bridge@claude-opencode-bridge
+```
+
+Accept the development channel dialog. Save `BRIDGE_OWNER` with the Claude conversation ID.
+For a new conversation, generate a new owner. To resume the same conversation:
+
+```sh
+BRIDGE_OWNER=your-saved-owner claude --resume YOUR_CLAUDE_SESSION_ID --dangerously-load-development-channels plugin:opencode-bridge@claude-opencode-bridge
+```
+
 Two active bridge processes cannot use the same owner in one database.
+The bridge cannot independently prove that a resumed conversation matches an owner supplied through the environment.
+It uses your existing OpenCode provider configuration and does not start or stop the OpenCode server.
 
 Channels require interactive Claude Code and Anthropic authentication through claude.ai or a Console API key.
 Organization policy can block channels. The development flag does not override that policy.
 Claude ignores the development channel flag in print mode (`-p`) and the Agent SDK.
 Without channel access, the control tools and `opencode_inspect` remain useful.
-See the [channel reference](https://code.claude.com/docs/en/channels-reference) for these restrictions.
+See the [channel reference](https://code.claude.com/docs/en/channels-reference).
+
+### Source development
+
+Clone this repository, run `bun install --frozen-lockfile`, then launch `scripts/claude.sh` from your project directory.
+The source launcher generates an owner and loads `plugin:opencode-bridge@inline` through `--plugin-dir`.
+Set a saved `BRIDGE_OWNER` and pass `--resume YOUR_CLAUDE_SESSION_ID` to resume.
 
 ## Use
 
@@ -104,9 +123,6 @@ History reads stop at 10,000 messages with an explicit error instead of an incom
 
 ## Checks
 
-The final automated suite has 30 passing tests. Real Claude delivery passed in idle and active turns.
-See [validation results](docs/validation.md) for exact versions, timestamps, and coverage limits.
-
 ```sh
 bun run format:check
 bun test
@@ -143,29 +159,14 @@ It checks channel notifications through an MCP client. It does not by itself pro
 `src/server.ts` connects MCP, schedules reconciliation, and handles shutdown.
 
 Run `bun run benchmark` for a local benchmark without model calls.
-See [performance results](docs/performance.md) for the measurements and their limits.
 
-## Distribution plan
+## Distribution
 
-The source checkout is ready for private GitHub sharing with the setup steps above.
-The recommended next step is a small [Git-hosted Claude plugin marketplace](https://code.claude.com/docs/en/plugin-marketplaces) and a versioned release.
-An npm package is not needed for this plugin.
+The public [GitHub marketplace](https://github.com/adamazad/claude-opencode-bridge) is the installation catalog.
+[Versioned releases](https://github.com/adamazad/claude-opencode-bridge/releases) also provide a plugin ZIP for local loading.
+The repository is not published to npm. No license has been selected.
 
-Before marketplace installation is ready:
-
-1. Add `.claude-plugin/marketplace.json` with an entry for `opencode-bridge`.
-2. Prepare dependency installation in the plugin cache, or distribute a Bun bundle with its dependencies.
-   The current source launcher expects `bun install --frozen-lockfile` in the checkout. It does not bootstrap a marketplace installation.
-3. Provide an installed-plugin launch command that sets a unique `BRIDGE_OWNER` and preserves it on resume.
-   The current launcher uses `--plugin-dir` for a source checkout.
-4. Test installation from a versioned commit on a clean machine. The current shell launchers require a POSIX shell.
-5. Choose a license and public/private audience before broader distribution. No license is selected in this repository.
-
-A private marketplace can serve collaborators who have repository access. Public discovery can later use Anthropic’s plugin directory.
-Local manifest validation passes, but directory submission currently lacks license metadata. Author and icon metadata also need attention.
-
-Marketplace publication does not approve a channel. Users still need the development-channel flag unless an applicable allowlist authorizes the plugin.
-Team and Enterprise admins can configure `allowedChannelPlugins`. Official-marketplace coordination uses an Anthropic partner contact.
-See the [channel packaging restrictions](https://code.claude.com/docs/en/channels-reference#package-as-a-plugin).
-
-No marketplace, release, npm publication, or public-visibility change is included in the initial private repository push.
+This marketplace is independently hosted. It is not an accepted listing in Anthropic's official directory or a channel allowlist approval.
+Custom channels still require the development flag unless an applicable allowlist authorizes them.
+Team and Enterprise administrators can configure `allowedChannelPlugins`.
+See [publishing options](https://code.claude.com/docs/en/plugins/publish) and [channel packaging](https://code.claude.com/docs/en/channels-reference#package-as-a-plugin).

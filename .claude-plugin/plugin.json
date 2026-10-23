@@ -8,5 +8,16 @@
       "args": []
     }
   },
-  "channels": [{ "server": "opencode", "displayName": "OpenCode workers" }]
+  "channels": [
+    {
+      "server": "opencode",
+      "displayName": "OpenCode workers"
+    }
+  ],
+  "author": {
+    "name": "adamazad",
+    "url": "https://github.com/adamazad"
+  },
+  "homepage": "https://github.com/adamazad/claude-opencode-bridge",
+  "repository": "https://github.com/adamazad/claude-opencode-bridge"
 }

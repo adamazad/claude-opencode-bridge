@@ -1,0 +1,14 @@
+{
+  "name": "claude-opencode-bridge",
+  "owner": {
+    "name": "adamazad"
+  },
+  "plugins": [
+    {
+      "name": "opencode-bridge",
+      "source": "./",
+      "version": "0.1.0",
+      "description": "Control OpenCode sessions as external workers and receive durable channel notifications."
+    }
+  ]
+}
