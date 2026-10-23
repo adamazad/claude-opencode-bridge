@@ -65,14 +65,20 @@ test("stdio MCP recovers from closed SSE, routes terminal result, acknowledges, 
       {
         OPENCODE_URL: mock.url.origin,
         BRIDGE_DB: join(dir, "bridge.sqlite"),
-        BRIDGE_OWNER: "test-mcp-owner",
+        BRIDGE_OWNER: "",
       },
       (notice) => notifications.push(notice),
+    );
+    await callTool(
+      client,
+      "opencode_configure",
+      { owner: "test-mcp-owner" },
+      z.object({ configured: z.literal(true) }),
     );
     expect(client.getServerCapabilities()?.experimental).toHaveProperty(
       "claude/channel",
     );
-    expect((await client.listTools()).tools).toHaveLength(6);
+    expect((await client.listTools()).tools).toHaveLength(7);
     await expect(
       callTool(client, "constructor", {}, z.unknown()),
     ).rejects.toThrow("Unknown tool");
@@ -244,3 +250,73 @@ test("background dispatch and inspect return before slow worker completion", asy
     rmSync(dir, { recursive: true, force: true });
   }
 }, 10000);
+
+test("normal launch connects without an owner and binds explicitly without changing ownership", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "bridge-setup-"));
+  const env = {
+    BRIDGE_OWNER: "",
+    BRIDGE_DB: join(dir, "bridge.sqlite"),
+    OPENCODE_URL: "http://127.0.0.1:1",
+  };
+  let client = await openBridgeClient(env, () => {});
+  let second: Awaited<ReturnType<typeof openBridgeClient>> | undefined;
+  try {
+    expect((await client.listTools()).tools.map((t) => t.name)).toContain(
+      "opencode_configure",
+    );
+    const setup = await callTool(
+      client,
+      "opencode_configure",
+      {},
+      z.object({ setup_required: z.literal(true) }),
+    );
+    expect(setup.setup_required).toBe(true);
+    await expect(
+      callTool(client, "opencode_inspect", {}, z.unknown()),
+    ).rejects.toThrow("setup required");
+    const owner = "claude-test-conversation-123";
+    const configured = z.object({
+      configured: z.literal(true),
+      owner: z.string(),
+    });
+    expect(
+      (await callTool(client, "opencode_configure", { owner }, configured))
+        .owner,
+    ).toBe(owner);
+    expect(
+      (await callTool(client, "opencode_configure", {}, configured)).owner,
+    ).toBe(owner);
+    await expect(
+      callTool(
+        client,
+        "opencode_configure",
+        { owner: "claude-other-conversation" },
+        z.unknown(),
+      ),
+    ).rejects.toThrow("already bound");
+    second = await openBridgeClient(env, () => {});
+    await expect(
+      callTool(second, "opencode_configure", { owner }, z.unknown()),
+    ).rejects.toThrow("already in use");
+    await second.close();
+    second = undefined;
+    await client.close();
+    client = await openBridgeClient(env, () => {});
+    expect(
+      (await callTool(client, "opencode_configure", { owner }, configured))
+        .owner,
+    ).toBe(owner);
+    const state = await callTool(
+      client,
+      "opencode_inspect",
+      {},
+      z.object({ owner: z.string(), sessions: z.array(z.unknown()) }),
+    );
+    expect(state.owner).toBe(owner);
+    expect(state.sessions).toEqual([]);
+  } finally {
+    await second?.close();
+    await client.close();
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 15000);

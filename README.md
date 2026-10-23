@@ -31,13 +31,18 @@ opencode serve --hostname 127.0.0.1 --port 4096
 Set `OPENCODE_SERVER_PASSWORD` to the password shown by OpenCode, then launch Claude from your project directory:
 
 ```sh
-export BRIDGE_OWNER="$(bun -e 'console.log(crypto.randomUUID())')"
-printf 'Save this owner to resume: %s\n' "$BRIDGE_OWNER"
 claude --dangerously-load-development-channels plugin:opencode-bridge@claude-opencode-bridge
 ```
 
-Accept the development channel dialog. Save `BRIDGE_OWNER` with the Claude conversation ID.
-For a new conversation, generate a new owner. To resume the same conversation:
+Accept the development channel dialog and use `/opencode-bridge:delegate <task>`.
+The command binds the bridge to the current Claude session ID. No owner environment variable is required for a new conversation.
+Resume that conversation normally with `--resume YOUR_CLAUDE_SESSION_ID`; the command reuses its stable owner.
+
+The MCP server connects even before ownership is configured. Worker tools remain unavailable until `opencode_configure` binds it explicitly.
+This avoids silently creating an owner or exposing another conversation's workers.
+A normal `claude` launch also connects the tools, but channel delivery still requires the flag above.
+
+If you already have workers created with an explicit `BRIDGE_OWNER`, keep that saved value when resuming:
 
 ```sh
 BRIDGE_OWNER=your-saved-owner claude --resume YOUR_CLAUDE_SESSION_ID --dangerously-load-development-channels plugin:opencode-bridge@claude-opencode-bridge
@@ -77,14 +82,15 @@ It does not provide this plugin's background dispatch behavior.
 Claude still takes a normal turn to interpret your request and dispatch it. This plugin cannot force Claude's UI to accept a new turn while Claude is still generating.
 Use the command above to avoid a completion-waiting tool loop.
 
-| Tool               | Purpose                                                                       |
-| ------------------ | ----------------------------------------------------------------------------- |
-| `opencode_start`   | Create a session, with an optional initial prompt, agent, and model.          |
-| `opencode_attach`  | Claim an existing session. Existing history is available through inspection.  |
-| `opencode_send`    | Assign a task or follow-up to an owned session.                               |
-| `opencode_inspect` | Read sessions, messages, pending forms, approvals, and unacknowledged events. |
-| `opencode_stop`    | Interrupt execution without deleting the session.                             |
-| `opencode_ack`     | Acknowledge a notification after Claude processes it.                         |
+| Tool                 | Purpose                                                                       |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `opencode_configure` | Check setup or explicitly bind to a stable conversation owner.                |
+| `opencode_start`     | Create a session, with an optional initial prompt, agent, and model.          |
+| `opencode_attach`    | Claim an existing session. Existing history is available through inspection.  |
+| `opencode_send`      | Assign a task or follow-up to an owned session.                               |
+| `opencode_inspect`   | Read sessions, messages, pending forms, approvals, and unacknowledged events. |
+| `opencode_stop`      | Interrupt execution without deleting the session.                             |
+| `opencode_ack`       | Acknowledge a notification after Claude processes it.                         |
 
 A model selection uses `{ "providerID": "opencode", "id": "deepseek-v4.1-flash-free" }`.
 Model availability can change. Select a model available through your OpenCode provider.
@@ -101,7 +107,7 @@ The bridge has no permission-approval tool and never changes permission rules.
 | `OPENCODE_URL`             | `http://127.0.0.1:4096`. Only loopback HTTP origins are accepted.                                                       |
 | `OPENCODE_SERVER_PASSWORD` | Password for the selected server. No password is stored in SQLite.                                                      |
 | `OPENCODE_SERVER_USERNAME` | `opencode`.                                                                                                             |
-| `BRIDGE_OWNER`             | Required. Generate it before launch. Use 8–128 letters, digits, underscores, or hyphens.                                |
+| `BRIDGE_OWNER`             | Optional saved owner override. Otherwise the delegation command binds to the current Claude session ID.                 |
 | `BRIDGE_DB`                | `~/.local/state/claude-opencode-bridge/bridge.sqlite`. Use the same database across conversations for ownership checks. |
 
 The database contains task IDs, session ownership, and notification bodies. It uses mode 0600 and a private parent directory.
