@@ -10,5 +10,6 @@
       "version": "0.1.0",
       "description": "Control OpenCode sessions as external workers and receive durable channel notifications."
     }
-  ]
+  ],
+  "description": "OpenCode workers for Claude Code, with durable MCP channel notifications."
 }
