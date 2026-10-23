@@ -73,8 +73,22 @@ Run the explicit background command in Claude:
 /opencode-bridge:delegate Inspect this project and report findings. Do not change files.
 ```
 
-The command selects this plugin's `opencode_start`, reports dispatch, and ends the Claude turn.
+The command selects this plugin's `opencode_start`, launches the returned read-only watcher through background Bash, reports the task ID, and ends the Claude turn.
 Completion arrives later through the channel. You can continue chatting while OpenCode works.
+
+### Visible worker tracking
+
+After dispatch, the delegation command starts a **background shell monitor**. Claude shows its running-shell indicator and a `/tasks` entry with the worker label. Normal Bash permissions apply; a shell approval may be required. The monitor performs no model calls and prints only state changes.
+
+- `/tasks`: inspect or stop the monitor. Stopping it does **not** cancel OpenCode work; use `opencode_stop` to cancel the worker.
+- `/opencode-bridge:status`: an on-demand table with owned workers, actual last-reported model, configured model, durable state, recent activity, and attention needed.
+- Completion: the existing channel delivers the result. The monitor exits and its shell completion is only tracking status, not a second result to process.
+
+This is a real Claude background shell task, not a native Claude subagent. It leaves your existing status line unchanged. Claude cleans up monitors when it exits; OpenCode can continue. Monitors stop after 24 hours. If background Bash is disabled or denied, channel delivery still works, but there is no persistent task indicator. Older workers without a monitor remain available through the status command.
+
+The monitor reads only this bridge's database for the exact owner, endpoint, session, and run. It does not poll OpenCode, acknowledge events, or change worker state. If the bridge disconnects, it reports an unknown outcome rather than claiming the worker is still running.
+
+Claude documents [background Bash tracking](https://code.claude.com/docs/en/interactive-mode#background-bash-commands). Its [automatic MCP backgrounding](https://code.claude.com/docs/en/mcp#automatic-backgrounding-of-long-tool-calls) waits two minutes by default; this plugin keeps dispatch short instead. A [custom Claude supervisor subagent](https://code.claude.com/docs/en/sub-agents) would add separate model calls. A [status-line script](https://code.claude.com/docs/en/statusline) would need composition with your existing script. The shell monitor avoids both changes.
 
 If another OpenCode integration is installed, check the tool name. This plugin exposes `opencode_start` and `opencode_send`.
 `mcp__opencode__delegate_task` belongs to the separate `claude-opencode-mcp` package and waits for the worker to finish.
@@ -83,15 +97,16 @@ It does not provide this plugin's background dispatch behavior.
 Claude still takes a normal turn to interpret your request and dispatch it. This plugin cannot force Claude's UI to accept a new turn while Claude is still generating.
 Use the command above to avoid a completion-waiting tool loop.
 
-| Tool                 | Purpose                                                                       |
-| -------------------- | ----------------------------------------------------------------------------- |
-| `opencode_configure` | Check setup or explicitly bind to a stable conversation owner.                |
-| `opencode_start`     | Create a session, with an optional initial prompt, agent, and model.          |
-| `opencode_attach`    | Claim an existing session. Existing history is available through inspection.  |
-| `opencode_send`      | Assign a task or follow-up to an owned session.                               |
-| `opencode_inspect`   | Read sessions, messages, pending forms, approvals, and unacknowledged events. |
-| `opencode_stop`      | Interrupt execution without deleting the session.                             |
-| `opencode_ack`       | Acknowledge a notification after Claude processes it.                         |
+| Tool                 | Purpose                                                                        |
+| -------------------- | ------------------------------------------------------------------------------ |
+| `opencode_status`    | Show owned worker titles, models, state, recent activity and attention needed. |
+| `opencode_configure` | Check setup or explicitly bind to a stable conversation owner.                 |
+| `opencode_start`     | Create a session, with an optional initial prompt, agent, and model.           |
+| `opencode_attach`    | Claim an existing session. Existing history is available through inspection.   |
+| `opencode_send`      | Assign a task or follow-up to an owned session.                                |
+| `opencode_inspect`   | Read sessions, messages, pending forms, approvals, and unacknowledged events.  |
+| `opencode_stop`      | Interrupt execution without deleting the session.                              |
+| `opencode_ack`       | Acknowledge a notification after Claude processes it.                          |
 
 A model selection uses `{ "providerID": "opencode", "id": "deepseek-v4.1-flash-free" }`.
 Model availability can change. Select a model available through your OpenCode provider.

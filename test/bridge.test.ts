@@ -396,3 +396,25 @@ test("assistant errors survive parsing and prevent a false success", async () =>
     "Provider rejected the request",
   );
 });
+
+test("status exposes actual reported model without confusing it with Claude or an unknown default", async () => {
+  const f = setup();
+  await f.bridge.start("/tmp");
+  f.messages.push({
+    id: "msg_report",
+    type: "assistant",
+    model: { providerID: "test-provider", id: "worker-model" },
+    agent: "worker-agent",
+    time: { created: 1234 },
+    content: [],
+  });
+  const status = await f.bridge.status();
+  expect(status.workers).toHaveLength(1);
+  expect(status.workers[0]).toMatchObject({
+    session_id: "ses_test",
+    model: { providerID: "test-provider", id: "worker-model" },
+    configured_model: null,
+    agent: "worker-agent",
+    last_activity: { type: "assistant", time: 1234 },
+  });
+});

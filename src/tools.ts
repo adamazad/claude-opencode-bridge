@@ -3,6 +3,8 @@ import { isAbsolute } from "node:path";
 import { realpathSync, statSync } from "node:fs";
 import { modelSchema } from "./api";
 import type { Bridge } from "./bridge";
+import { fileURLToPath } from "node:url";
+import { watchCommand } from "./watch";
 
 // Keep each tool's schema, advertised contract and typed handler together.
 function tool<S extends z.ZodObject>(
@@ -24,7 +26,32 @@ export function createTools(
   getBridge: () => Bridge,
   configure: (owner?: string) => unknown,
 ) {
+  const dispatch = async (bridge: Bridge, id: string, text: string) => {
+    const result = await bridge.prompt(id, text);
+    return {
+      ...result,
+      monitor: {
+        command: watchCommand(
+          fileURLToPath(new URL("../scripts/watch.ts", import.meta.url)),
+          {
+            db: bridge.store.path,
+            owner: bridge.store.owner,
+            endpoint: bridge.api.url,
+            session: id,
+            run: result.run_id,
+          },
+        ),
+        run_in_background: true,
+        description: `OpenCode monitor ${id}`,
+      },
+    };
+  };
   return {
+    opencode_status: tool(
+      "Get an on-demand snapshot of owned workers: title, actual last-reported model, configured model, durable state and recent activity. No shell commands or polling loop needed.",
+      z.object({}),
+      () => getBridge().status(),
+    ),
     opencode_configure: tool(
       "Inspect setup with no arguments. If setup_required, bind to this Claude conversation with owner=claude-<current Claude session ID>, or its explicitly saved BRIDGE_OWNER. Never invent a new owner on resume or change an existing binding.",
       z.object({
@@ -51,7 +78,7 @@ export function createTools(
           throw new Error("directory must exist");
         const bridge = getBridge();
         const session = await bridge.start(directory, title, model, agent);
-        return prompt ? bridge.prompt(session.id, prompt) : session;
+        return prompt ? dispatch(bridge, session.id, prompt) : session;
       },
     ),
     opencode_attach: tool(
@@ -62,7 +89,7 @@ export function createTools(
     opencode_send: tool(
       "Send a task or follow-up to the same owned OpenCode session. One outstanding task per session. Report dispatch and end your turn; do not poll or wait for completion.",
       ownedSession.extend({ text: z.string().min(1) }),
-      ({ session_id, text }) => getBridge().prompt(session_id, text),
+      ({ session_id, text }) => dispatch(getBridge(), session_id, text),
     ),
     opencode_inspect: tool(
       "Read owned sessions, messages, pending approvals/forms and durable unacknowledged notifications. Works without channels.",

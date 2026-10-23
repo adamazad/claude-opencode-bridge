@@ -97,6 +97,56 @@ export class Bridge {
       pending: this.store.pending().filter((n) => n.session === id),
     };
   }
+  async status() {
+    const pending = this.store.pending();
+    const workers = await Promise.all(
+      this.store.sessions().map(async (worker) => {
+        try {
+          const [session, messages] = await Promise.all([
+            this.api.request(sid(worker.id), sessionResponseSchema),
+            this.api.messages(worker.id, worker.run ?? undefined),
+          ]);
+          const assistant = messages
+            .filter((m) => m.type === "assistant")
+            .at(-1);
+          const last = messages.at(-1);
+          return {
+            session_id: worker.id,
+            run_id: worker.run,
+            state: worker.state,
+            title: session.data.title ?? worker.id,
+            model: assistant?.model ?? null,
+            configured_model: session.data.model ?? null,
+            agent: assistant?.agent ?? session.data.agent ?? null,
+            last_activity: last
+              ? {
+                  type: last.type,
+                  time: last.time?.completed ?? last.time?.created ?? null,
+                }
+              : null,
+            needs_attention: pending.some(
+              (n) =>
+                n.session === worker.id &&
+                [
+                  "input_required",
+                  "submission_uncertain",
+                  "bridge_error",
+                ].includes(n.kind),
+            ),
+          };
+        } catch {
+          return {
+            session_id: worker.id,
+            run_id: worker.run,
+            state: worker.state,
+            status_error:
+              "Live details unavailable; showing last durable bridge state.",
+          };
+        }
+      }),
+    );
+    return { owner: this.store.owner, sampled_at: Date.now(), workers };
+  }
   async reconcileSession(id: string) {
     const s = this.store.get(id);
     // Pending human inputs are durable server records; recover them even if SSE was missed.

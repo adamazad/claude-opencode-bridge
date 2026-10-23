@@ -23,7 +23,7 @@ export type Notice = {
 export class Store {
   db: Database;
   constructor(
-    path: string,
+    readonly path: string,
     readonly owner: string,
     readonly endpoint: string,
   ) {

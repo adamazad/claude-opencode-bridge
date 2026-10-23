@@ -78,7 +78,7 @@ test("stdio MCP recovers from closed SSE, routes terminal result, acknowledges, 
     expect(client.getServerCapabilities()?.experimental).toHaveProperty(
       "claude/channel",
     );
-    expect((await client.listTools()).tools).toHaveLength(7);
+    expect((await client.listTools()).tools).toHaveLength(8);
     await expect(
       callTool(client, "constructor", {}, z.unknown()),
     ).rejects.toThrow("Unknown tool");

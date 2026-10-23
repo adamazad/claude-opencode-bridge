@@ -1,9 +1,13 @@
 import { z } from "zod";
+export const modelSchema = z.object({ providerID: z.string(), id: z.string() });
+
 // Validate fields the bridge consumes, while retaining OpenCode's additional
 // fields (tool states, errors, metadata) for inspection and notifications.
 export const messageSchema = z.looseObject({
   id: z.string(),
   type: z.string(),
+  model: modelSchema.optional(),
+  agent: z.string().optional(),
   text: z.string().optional(),
   content: z
     .array(z.looseObject({ type: z.string(), text: z.string().optional() }))
@@ -19,13 +23,16 @@ export const messageSchema = z.looseObject({
 });
 export type Message = z.infer<typeof messageSchema>;
 
-export const modelSchema = z.object({ providerID: z.string(), id: z.string() });
 export type Model = z.infer<typeof modelSchema>;
 
 const infoSchema = z.looseObject({ version: z.string() });
 export const sessionResponseSchema = z.looseObject({
   data: z.looseObject({
     id: z.string().regex(/^ses/),
+    title: z.string().optional(),
+    model: modelSchema.optional(),
+    agent: z.string().optional(),
+    time: z.looseObject({ updated: z.number().optional() }).optional(),
     location: z.looseObject({ directory: z.string() }),
   }),
 });
