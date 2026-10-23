@@ -7,7 +7,7 @@
     {
       "name": "opencode-bridge",
       "source": "./",
-      "version": "0.1.0",
+      "version": "0.1.1",
       "description": "Control OpenCode sessions as external workers and receive durable channel notifications."
     }
   ],

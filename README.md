@@ -61,10 +61,21 @@ Set a saved `BRIDGE_OWNER` and pass `--resume YOUR_CLAUDE_SESSION_ID` to resume.
 
 ## Use
 
-Ask Claude:
+Run the explicit background command in Claude:
 
-> Use opencode_start to create a worker in /absolute/path/to/project. Ask it to inspect the project and report its findings.
-> When its channel result arrives, acknowledge it and send a follow-up through the same session.
+```text
+/opencode-bridge:delegate Inspect this project and report findings. Do not change files.
+```
+
+The command selects this plugin's `opencode_start`, reports dispatch, and ends the Claude turn.
+Completion arrives later through the channel. You can continue chatting while OpenCode works.
+
+If another OpenCode integration is installed, check the tool name. This plugin exposes `opencode_start` and `opencode_send`.
+`mcp__opencode__delegate_task` belongs to the separate `claude-opencode-mcp` package and waits for the worker to finish.
+It does not provide this plugin's background dispatch behavior.
+
+Claude still takes a normal turn to interpret your request and dispatch it. This plugin cannot force Claude's UI to accept a new turn while Claude is still generating.
+Use the command above to avoid a completion-waiting tool loop.
 
 | Tool               | Purpose                                                                       |
 | ------------------ | ----------------------------------------------------------------------------- |

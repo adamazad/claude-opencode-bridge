@@ -23,7 +23,7 @@ const ownedSession = z.object({
 export function createTools(bridge: Bridge) {
   return {
     opencode_start: tool(
-      "Create an OpenCode v2+ session and optionally assign a task. Returns immediately; terminal outcomes arrive through the channel.",
+      "Create an OpenCode v2+ session and optionally assign a task. Returns after prompt admission, without waiting for model completion. Report dispatch and end your turn; terminal outcomes arrive through the channel.",
       z.object({
         directory: z.string(),
         title: z.string().optional(),
@@ -46,7 +46,7 @@ export function createTools(bridge: Bridge) {
       ({ session_id }) => bridge.attach(session_id),
     ),
     opencode_send: tool(
-      "Send a task or follow-up to the same owned OpenCode session. One outstanding task per session.",
+      "Send a task or follow-up to the same owned OpenCode session. One outstanding task per session. Report dispatch and end your turn; do not poll or wait for completion.",
       ownedSession.extend({ text: z.string().min(1) }),
       ({ session_id, text }) => bridge.prompt(session_id, text),
     ),

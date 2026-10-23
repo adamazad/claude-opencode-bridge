@@ -150,3 +150,97 @@ test("stdio MCP recovers from closed SSE, routes terminal result, acknowledges, 
     rmSync(dir, { recursive: true, force: true });
   }
 }, 20000);
+
+test("background dispatch and inspect return before slow worker completion", async () => {
+  const messages: Message[] = [];
+  let finish: (() => void) | undefined;
+  const mock = Bun.serve({
+    hostname: "127.0.0.1",
+    port: 0,
+    fetch: async (req) => {
+      const p = new URL(req.url).pathname;
+      if (p === "/api/info") return Response.json({ version: "2.0.32" });
+      if (p === "/api/session")
+        return Response.json({
+          data: {
+            id: "ses_background",
+            location: { directory: process.cwd() },
+          },
+        });
+      if (p.endsWith("/prompt")) {
+        const body = await req.json();
+        messages.push({ id: body.id, type: "user" });
+        // A slow admission response still precedes the independent worker result.
+        await Bun.sleep(300);
+        finish = () =>
+          messages.push(
+            {
+              id: "msg_answer",
+              type: "assistant",
+              content: [{ type: "text", text: "SLOW_WORK_DONE" }],
+            },
+            { id: "msg_terminal", type: "idle", outcome: "succeeded" },
+          );
+        return Response.json({ data: { id: body.id } });
+      }
+      if (p.endsWith("/permission") || p.endsWith("/form"))
+        return Response.json({ data: [] });
+      if (p.endsWith("/message"))
+        return Response.json({
+          data: [...messages].reverse(),
+          cursor: { next: null },
+        });
+      if (p === "/api/event")
+        return new Response("data: {}\n\n", {
+          headers: { "Content-Type": "text/event-stream" },
+        });
+      return new Response("missing", { status: 404 });
+    },
+  });
+  const dir = mkdtempSync(join(tmpdir(), "bridge-background-"));
+  const notices: ChannelNotice[] = [];
+  const client = await openBridgeClient(
+    {
+      OPENCODE_URL: mock.url.origin,
+      BRIDGE_DB: join(dir, "bridge.sqlite"),
+      BRIDGE_OWNER: "background-test",
+    },
+    (n) => notices.push(n),
+  );
+  try {
+    const start = performance.now();
+    await callTool(
+      client,
+      "opencode_start",
+      { directory: process.cwd(), prompt: "long job" },
+      z.object({ state: z.literal("running") }),
+    );
+    const dispatchMs = performance.now() - start;
+    expect(dispatchMs).toBeLessThan(1000);
+    await Bun.sleep(2200);
+    expect(notices).toHaveLength(0);
+    const inspect = performance.now();
+    const state = await callTool(
+      client,
+      "opencode_inspect",
+      {},
+      z.object({ sessions: z.array(z.object({ state: z.string() })) }),
+    );
+    const inspectMs = performance.now() - inspect;
+    expect(inspectMs).toBeLessThan(500);
+    expect(state.sessions[0]!.state).toBe("running");
+    expect(finish).toBeDefined();
+    finish!();
+    const deadline = Date.now() + 5000;
+    while (!notices.length && Date.now() < deadline) await Bun.sleep(25);
+    expect(notices).toHaveLength(1);
+    expect(notices[0]!.content).toContain("SLOW_WORK_DONE");
+    console.log(
+      `Background regression: dispatch ${dispatchMs.toFixed(1)}ms, inspect ${inspectMs.toFixed(1)}ms; completion held for >2200ms.`,
+    );
+  } finally {
+    await client.close();
+    mock.stop(true);
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 10000);
